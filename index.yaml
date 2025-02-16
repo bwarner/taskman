@@ -110,7 +110,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schema/TaskPage'
+                $ref: '#/components/schemas/TaskPage'
         '500':
           description: Unexpected error
           content:
@@ -177,8 +177,9 @@ components:
         count:
           type: integer
         tasks:
-          type: object
-          $ref: '#/components/schemas/Tasks'
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
     CreateTaskInput:
       type: object
       required:
@@ -205,7 +206,7 @@ components:
         - scheduleType
       properties:
          taskId:
-          $ref: '#/components/schemas/tasksId'
+          $ref: '#/components/schemas/taskId'
          name:
           type: string
          scheduleType:
