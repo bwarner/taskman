@@ -1,0 +1,235 @@
+openapi: '3.0.0'
+info:
+  version: '1.0.0'
+  title: 'Task API'
+  description: Task managemeent securitySchemes
+
+paths:
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        description: The unique identifier of the tasks
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/taskId'
+    get:
+      summary: Read a task
+      responses:
+        '200':
+          description: The tasks corresponding to the provided `tasksId`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        404:
+          description: No tasks found for the provided `tasksId`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: remove the tasks if it has not has not remain executions
+      responses:
+        '200':
+          description: remove the task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        404:
+          description: No tasks found for the provided `tasksId`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: update the tasks if it has not has not remain executions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskInput'
+      responses:
+        '200':
+          description: the task was udpated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        404:
+          description: No tasks found for the provided `tasksId`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks:
+    get: 
+      summary: create a task
+      description: Adds a new task 
+      operationId: getTasks
+      parameters:
+        - name: limit
+          description: the max number of tasks to return
+          in: query
+          required: false            
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          description: The number of tasks to skip before starting to collect the result set.
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 0
+      responses:
+        '200':
+          description: paginated list of task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schema/TaskPage'
+        '500':
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskInput'
+      responses:
+        '200':
+          description: The task was created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '500':
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    taskId:
+      description: The unique identifier of a tasks
+      type: string
+    Task:
+      type: object
+      required:
+        - id
+        - name
+        - type
+      properties:
+        id:
+          $ref: '#/components/schemas/taskId'
+        name:
+          type: string
+        state:
+          type: string
+          enum:            
+            - pending
+            - running
+            - failed
+            - completed
+    Once:
+        type: object
+        properties:
+          executionTime:
+            type: number
+    Recurring:
+        type: string
+    TaskPage:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset: 
+          type: integer
+        count:
+          type: integer
+        tasks:
+          type: object
+          $ref: '#/components/schemas/Tasks'
+    CreateTaskInput:
+      type: object
+      required:
+        - name
+        - scheduleType
+      properties:
+         name:
+          type: string
+         scheduleType:
+            type: string
+            enum:
+              - single
+              - recurring
+         schedule:
+          type: string
+          oneOf:
+            - $ref: '#/components/schemas/Once'
+            - $ref: '#/components/schemas/Recurring'
+    UpdateTaskInput:
+      type: object
+      required:
+        - id
+        - name
+        - scheduleType
+      properties:
+         taskId:
+          $ref: '#/components/schemas/tasksId'
+         name:
+          type: string
+         scheduleType:
+            type: string
+            enum:
+              - single
+              - recurring
+         schedule:
+          type: string
+          oneOf:
+            - $ref: '#/components/schemas/Once'
+            - $ref: '#/components/schemas/Recurring'
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          description: A human readable error message
+          type: string
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+security:
+  - ApiKey: []
