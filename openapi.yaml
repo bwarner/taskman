@@ -2,7 +2,7 @@ openapi: '3.0.0'
 info:
   version: '1.0.0'
   title: 'Task API'
-  description: Task managemeent securitySchemes
+  description: Task management securitySchemes
 
 paths:
   /tasks/{taskId}:
@@ -100,10 +100,11 @@ paths:
         - name: offset
           description: The number of tasks to skip before starting to collect the result set.
           in: query
+          required: false
           schema:
             type: integer
             minimum: 1
-            default: 0
+            default: 1
       responses:
         '200':
           description: paginated list of task
