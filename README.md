@@ -1,90 +1,50 @@
-# Taskman3
+# Taskman - a distribute task running application
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+## Overview 
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+Taskman is a distributed task running application. It is am simple system that allows you to run tasks on a distributed system.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Objectives
 
-## Finish your CI setup
+- To provide a simple system for running tasks
+- The tasks can be scheduled to run onetime or recurring
+- The task can be scheduled to run on a specific cron schedule
+- The status of the task can be viewed in the UI
+- The task logs can be viewed in the UI
+- The tasks are durable, meaning that they will run even if the Taskman server is restarted
+- The tasks are distributed, meaning that they will be run on different machines
+- The tasks are scalable, meaning that they can be run on a large number of machines
+  
+## Architecture
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/LaiazJmPbx)
+The system is composed of the following components: worker nodes, front-end server, a watchdog server, and a Redis server.
 
+### Worker Nodes
 
-## Generate a library
+The worker nodes are responsible for running the tasks. They are responsible for listening for tasks from the front-end server and executing them.
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
+### Front-end Server
 
-## Run tasks
+The front-end server is responsible for sending tasks to the worker nodes and receiving the results.
 
-To build the library use:
+### Watchdog Server
 
-```sh
-npx nx build pkg1
-```
+The watchdog server is responsible for monitoring the state of tasks, it will notice things like tasks that have been scheduled to run but not started, or tasks that have been running for too long.
 
-To run any task with Nx use:
+### Redis 
 
-```sh
-npx nx <target> <project-name>
-```
+Redis is used to store the state of the tasks, it is used to store the task queue, the task results, and the task logs.
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### Taskman API
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The Taskman API is a REST API that is used to communicate between the front-end server and the worker nodes. It is used to send tasks to the worker nodes and receive the results. For simplicity the works will host the API.
 
-## Versioning and releasing
-
-To version and release the library use
-
-```
-npx nx release
-```
-
-Pass `--dry-run` to see what would happen without actually releasing the library.
-
-[Learn more about Nx release &raquo;](hhttps://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Keep TypeScript project references up to date
-
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
-
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
-
-```sh
-npx nx sync
-```
-
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
-
-```sh
-npx nx sync:check
-```
-
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+The API will be used by the front-end server to send tasks to the worker nodes and receive the results.
 
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-## Install Nx Console
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
-## Useful links
 
-Learn more:
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
