@@ -22,8 +22,6 @@ const createTaskInputSchema = z.object({
 type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 
 const updateTaskInputSchema = z.object({
-  name: z.string().min(3, 'Task name must be at least 3 characters'),
-  scheduleType: scheduleTypeSchema,
   schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
 });
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
