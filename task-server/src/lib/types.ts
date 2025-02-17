@@ -1,9 +1,8 @@
-import { Schema, z } from 'zod';
+import { z } from 'zod';
 
 // Schedule types
 // single schedule is an ISO 8601 date string
 // recurring schedule is a cron expression
-const scheduleTypeSchema = z.enum(['single', 'recurring']);
 const singleScheduleSchema = z.object({
   type: z.literal('single'),
   date: z.string(),
@@ -40,7 +39,6 @@ const taskListSchema = z.object({
   tasks: z.array(taskSchema),
   total: z.number(),
 });
-type TaskListResponse = z.infer<typeof taskListSchema>;
 
 type TaskList = z.infer<typeof taskListSchema>;
 
@@ -50,4 +48,4 @@ export {
   taskSchema,
   taskListSchema,
 };
-export type { CreateTaskInput, UpdateTaskInput, Task, TaskListResponse };
+export type { CreateTaskInput, UpdateTaskInput, Task, TaskList };

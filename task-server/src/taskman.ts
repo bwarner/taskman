@@ -1,8 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { AnyZodObject } from 'zod';
 import { Cluster } from 'ioredis';
 import { createTaskInputSchema, updateTaskInputSchema } from './lib/types.js';
 import validate from './validate.js';
+import logger from './logger.js';
 
 const redisNodes = process.env.REDIS_NODES?.split(',');
 
@@ -12,15 +12,16 @@ const redis = new Cluster(
     redisOptions: {
       password: process.env.REDIS_PASSWORD,
     },
-  }
+  },
 );
 
 redis.on('connect', () => {
-  console.log('Connected to Redis');
+  logger.info('Connected to Redis');
+  redis;
 });
 
 redis.on('error', (err) => {
-  console.error('Redis error:', err);
+  logger.error('Redis error:', err);
 });
 
 const router = express.Router();
@@ -32,7 +33,7 @@ router.post(
     const task = req.body;
     res.json(task);
     next();
-  }
+  },
 );
 
 router.put(
@@ -41,7 +42,7 @@ router.put(
   (req: Request, res: Response) => {
     const task = req.body;
     res.json(task);
-  }
+  },
 );
 
 router.get('/tasks', (req: Request, res: Response) => {

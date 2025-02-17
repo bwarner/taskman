@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import taskman from './taskman.js';
 import logger from './logger.js';
 import { Cluster } from 'ioredis';
@@ -24,7 +23,7 @@ app.listen(PORT, async () => {
       redisOptions: {
         password: process.env.REDIS_PASSWORD,
       },
-    }
+    },
   );
   await redis.set('task1', 'pending');
   console.log('Cluster says:', await redis.get('task1'));

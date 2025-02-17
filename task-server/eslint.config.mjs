@@ -10,11 +10,17 @@ import eslintNodePlugin from 'eslint-plugin-node';
 export default [
   {
     // Ignore specific directories
-    ignores: [
-      // 'jest.config.ts',
-    ],
+    ignores: ['dist/**'],
   },
   {
+    files: ['**/*.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      parserOptions: { project: null },
+    },
+  },
+  {
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {

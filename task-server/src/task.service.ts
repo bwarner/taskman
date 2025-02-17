@@ -1,5 +1,5 @@
 import { Cluster } from 'ioredis';
-import { Task, UpdateTaskInput } from './lib/types.js';
+import { Task, TaskList, UpdateTaskInput } from './lib/types.js';
 import { CreateTaskInput, taskSchema } from './lib/types.js';
 import { nanoid } from 'nanoid';
 import logger from './logger.js';
@@ -74,27 +74,40 @@ export class TaskService {
     return null;
   }
 
-  async getTasks(options: { offset: number; limit: number }) {
-    const tasks = await this.redis.zrange(
+  async getTasks(options: {
+    offset: number;
+    limit: number;
+  }): Promise<TaskList> {
+    const rawTasks = await this.redis.zrange(
       'scheduled-tasks',
       options.offset,
       options.offset + options.limit - 1,
     );
-    return tasks.map(async (id) => {
-      let task = null;
-      try {
-        const json = await this.redis.get(`task:${id}`);
-        if (json) {
-          const data = JSON.parse(json);
-          const result = taskSchema.safeParse(data);
-          if (result.success) {
-            task = result.data;
+    const tasks = (
+      await Promise.all(
+        rawTasks.map(async (id) => {
+          let task = null;
+          try {
+            const json = await this.redis.get(`task:${id}`);
+            if (json) {
+              const data = JSON.parse(json);
+              const result = taskSchema.safeParse(data);
+              if (result.success) {
+                task = result.data;
+              }
+            }
+          } catch (error) {
+            logger.error(`Error getting task ${id}: ${error}`);
           }
-        }
-      } catch (error) {
-        logger.error(`Error getting task ${id}: ${error}`);
-      }
-      return task;
-    });
+          return task;
+        }),
+      )
+    ).filter<Task>((task): task is Task => task !== null);
+    return {
+      tasks,
+      offset: options.offset,
+      limit: options.limit,
+      total: tasks.length,
+    };
   }
 }
