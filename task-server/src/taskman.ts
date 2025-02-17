@@ -1,7 +1,27 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { AnyZodObject } from 'zod';
+import { Cluster } from 'ioredis';
 import { createTaskInputSchema, updateTaskInputSchema } from './lib/types.js';
 import validate from './validate.js';
+
+const redisNodes = process.env.REDIS_NODES?.split(',');
+
+const redis = new Cluster(
+  redisNodes?.map((node) => ({ host: node, port: 6379 })) || [],
+  {
+    redisOptions: {
+      password: process.env.REDIS_PASSWORD,
+    },
+  }
+);
+
+redis.on('connect', () => {
+  console.log('Connected to Redis');
+});
+
+redis.on('error', (err) => {
+  console.error('Redis error:', err);
+});
 
 const router = express.Router();
 

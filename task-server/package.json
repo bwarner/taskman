@@ -8,10 +8,10 @@
   "license": "ISC",
   "author": "Byron Warner",
   "type": "module",
-  "main": "index.js",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "nodemon",
-    "start": "node dist/server.js",
+    "start": "node --env-file=.env dist/server.js",
     "build": "tsc"
   },
   "dependencies": {
@@ -19,6 +19,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "ioredis": "^5.5.0",
+    "nanoid": "^5.1.0",
     "pino": "^9.6.0",
     "pino-prettier": "^3.0.1-dev",
     "zod": "^3.24.2"

@@ -31,11 +31,25 @@ type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 const taskSchema = z.object({
   id: z.string(),
   name: z.string(),
-  scheduleType: scheduleTypeSchema,
   schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
   status: taskStatusSchema,
 });
 type Task = z.infer<typeof taskSchema>;
 
-export { createTaskInputSchema, updateTaskInputSchema, taskSchema };
-export type { CreateTaskInput, UpdateTaskInput, Task };
+const taskListSchema = z.object({
+  offset: z.number(),
+  limit: z.number(),
+  tasks: z.array(taskSchema),
+  total: z.number(),
+});
+type TaskListResponse = z.infer<typeof taskListSchema>;
+
+type TaskList = z.infer<typeof taskListSchema>;
+
+export {
+  createTaskInputSchema,
+  updateTaskInputSchema,
+  taskSchema,
+  taskListSchema,
+};
+export type { CreateTaskInput, UpdateTaskInput, Task, TaskListResponse };
