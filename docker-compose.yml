@@ -1,0 +1,78 @@
+services:
+
+  task-server:
+      build: ./task-server
+      container_name: task-server
+      restart: unless-stopped
+      ports:
+        - "8080:8080"  # Adjust the port based on your server
+      depends_on:
+        - redis-node-0  # Ensure Redis starts before task-server
+      env_file:
+        - ./task-server/.env  # Load environment variables
+      networks:
+        - redis-net
+      volumes:
+        - ./task-server:/usr/src/app  # Mount local files for live reload
+        - /usr/src/app/node_modules  # Avoid overwriting node_modules
+  redis-node-0:
+    image: bitnami/redis-cluster:latest
+    container_name: redis-node-0
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    env_file: 
+      - ./redis/.env
+    environment:
+      - REDIS_CLUSTER_CREATOR=yes
+    networks:
+      - redis-net
+
+  redis-node-1:
+    image: bitnami/redis-cluster:latest
+    container_name: redis-node-1
+    restart: unless-stopped
+    env_file: 
+      - ./redis/.env
+    networks:
+      - redis-net
+
+  redis-node-2:
+    image: bitnami/redis-cluster:latest
+    container_name: redis-node-2
+    restart: unless-stopped
+    env_file: 
+      - ./redis/.env
+    networks:
+      - redis-net
+
+  redis-node-3:
+    image: bitnami/redis-cluster:latest
+    container_name: redis-node-3
+    restart: unless-stopped
+    env_file: 
+      - ./redis/.env
+    networks:
+      - redis-net
+
+  redis-node-4:
+    image: bitnami/redis-cluster:latest
+    container_name: redis-node-4
+    restart: unless-stopped
+    env_file: 
+      - ./redis/.env
+    networks:
+      - redis-net
+
+  redis-node-5:
+    image: bitnami/redis-cluster:latest
+    container_name: redis-node-5
+    restart: unless-stopped
+    env_file: 
+      - ./redis/.env
+    networks:
+      - redis-net
+
+networks:
+  redis-net:
+    driver: bridge
