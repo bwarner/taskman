@@ -15,9 +15,28 @@ services:
       volumes:
         - ./task-server:/usr/src/app  # Mount local files for live reload
         - /usr/src/app/node_modules  # Avoid overwriting node_modules
+      healthcheck:
+        test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"] # Example health check, replace with your app's health endpoint
+        interval: 10s
+        timeout: 20s
+        retries: 5
+        start_period: 30s # Give the app some time to start        
   redis-node-0:
     image: bitnami/redis-cluster:latest
     container_name: redis-node-0
+    command: >
+      sh -c '
+        while ! redis-cli -h redis0 ping 2>/dev/null ||
+              ! redis-cli -h redis1 ping 2>/dev/null ||
+              ! redis-cli -h redis2 ping 2>/dev/null ||
+              ! redis-cli -h redis3 ping 2>/dev/null ||
+              ! redis-cli -h redis4 ping 2>/dev/null ||
+              ! redis-cli -h redis5 ping 2>/dev/null; do
+          sleep 1;
+          echo "XXXXWaiting for Redis nodes to be ready...";
+        done;
+        redis-cli --cluster create redis0:6379 redis1:6379 redis2:6379 redis3:6379 redis4:6379 redis5:6379 --cluster-replicas 1
+      '    
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -25,54 +44,114 @@ services:
       - ./redis/.env
     environment:
       - REDIS_CLUSTER_CREATOR=yes
+      - REDISCLI_AUTH=bitnami
+      - REDIS_CLUSTER_REPLICAS=1
     networks:
-      - redis-net
+      redis-net:
+        aliases:
+        - redis0
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"] # Simple Redis ping
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - redis_data_0:/data
+
 
   redis-node-1:
     image: bitnami/redis-cluster:latest
     container_name: redis-node-1
+    depends_on:
+      - redis-node-0
     restart: unless-stopped
+    ports:
+      - "6380:6379"
     env_file: 
       - ./redis/.env
     networks:
-      - redis-net
+      redis-net:
+        aliases:
+        - redis1
+    volumes:
+      - redis_data_1:/data
 
   redis-node-2:
     image: bitnami/redis-cluster:latest
     container_name: redis-node-2
+    depends_on:
+      - redis-node-0
     restart: unless-stopped
+    ports:
+      - "6381:6379"
     env_file: 
       - ./redis/.env
     networks:
-      - redis-net
+      redis-net:
+        aliases:
+        - redis2
+    volumes:
+      - redis_data_2:/data
 
   redis-node-3:
     image: bitnami/redis-cluster:latest
     container_name: redis-node-3
+    depends_on:
+      - redis-node-0
     restart: unless-stopped
+    ports:
+      - "6382:6379"
     env_file: 
       - ./redis/.env
     networks:
-      - redis-net
+      redis-net:
+        aliases:
+        - redis3
+    volumes:
+      - redis_data_3:/data
 
   redis-node-4:
     image: bitnami/redis-cluster:latest
     container_name: redis-node-4
+    depends_on:
+      - redis-node-0
     restart: unless-stopped
+    ports:
+      - "6383:6379"
     env_file: 
       - ./redis/.env
     networks:
-      - redis-net
+      redis-net:
+        aliases:
+        - redis4
+    volumes:
+      - redis_data_4:/data
 
   redis-node-5:
     image: bitnami/redis-cluster:latest
     container_name: redis-node-5
+    depends_on:
+      - redis-node-0
     restart: unless-stopped
+    ports:
+      - "6384:6379"
     env_file: 
       - ./redis/.env
     networks:
-      - redis-net
+      redis-net:
+        aliases:
+        - redis5
+    volumes:
+      - redis_data_5:/data
 
 networks:
   redis-net:
     driver: bridge
+
+volumes:
+  redis_data_0:
+  redis_data_1:
+  redis_data_2:
+  redis_data_3:
+  redis_data_4:
+  redis_data_5:

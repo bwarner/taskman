@@ -3,8 +3,10 @@ import { Cluster } from 'ioredis';
 import { createTaskInputSchema, updateTaskInputSchema } from './lib/types.js';
 import validate from './validate.js';
 import logger from './logger.js';
+import { TaskService } from './task.service.js';
 
 const redisNodes = process.env.REDIS_NODES?.split(',');
+let taskService: TaskService;
 
 const redis = new Cluster(
   redisNodes?.map((node) => ({ host: node, port: 6379 })) || [],
@@ -17,7 +19,8 @@ const redis = new Cluster(
 
 redis.on('connect', () => {
   logger.info('Connected to Redis');
-  redis;
+  taskService = new TaskService(redis);
+  // TODO: add check for taskService initialization
 });
 
 redis.on('error', (err) => {
@@ -31,8 +34,8 @@ router.post(
   validate(createTaskInputSchema),
   (req: Request, res: Response, next: NextFunction) => {
     const task = req.body;
-    res.json(task);
-    next();
+    const createdTask = taskService.createTask(task);
+    res.json(createdTask);
   },
 );
 
@@ -46,7 +49,13 @@ router.put(
 );
 
 router.get('/tasks', (req: Request, res: Response) => {
-  res.json([]);
+  const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+  const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+  const tasks = taskService.getTasks({
+    offset,
+    limit,
+  });
+  res.json(tasks);
 });
 
 router.get('/tasks/:id', (req: Request, res: Response) => {
