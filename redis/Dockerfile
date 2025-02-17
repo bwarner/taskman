@@ -1,6 +1,12 @@
 FROM bitnami/redis-cluster:latest
+USER root
 
-COPY redis.conf /opt/bitnami/redis/etc/redis.conf
+# ✅ Copy and set permissions
+COPY redis-entrypoint.sh /redis-entrypoint.sh
+RUN chmod +x /redis-entrypoint.sh && chown 1001:1001 /redis-entrypoint.sh
 
-EXPOSE 6379
+# ✅ Switch back to the default non-root user
+USER 1001
 
+# ✅ Use as entrypoint
+ENTRYPOINT ["/redis-entrypoint.sh"]
