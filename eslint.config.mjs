@@ -6,13 +6,16 @@ import eslintPluginAutofix from 'eslint-plugin-autofix';
 import eslintPluginImport from 'eslint-plugin-import';
 import typescriptParser from '@typescript-eslint/parser';
 import eslintNodePlugin from 'eslint-plugin-node';
+import { rules } from 'eslint-plugin-prettier';
 
 export default [
   {
     // Ignore specific directories
     ignores: ['dist/**'],
   },
+  // TypeScript and JavaScript overrides
   {
+    files: ['*.ts', '*.tsx'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -21,9 +24,17 @@ export default [
       globals: {
         console: 'readonly',
         process: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        Promise: 'readonly',
       },
       ecmaVersion: 'latest',
       sourceType: 'module',
+      rules: {
+        'prettier/prettier': 'warn',
+        'no-unused-vars': 'error',
+        'no-debugger': 'error',
+      },
     },
   },
   {
@@ -35,6 +46,9 @@ export default [
         require: 'readonly', // ✅ Allow require()
         module: 'readonly', // ✅ Allow module.exports
         __dirname: 'readonly', // ✅ Allow __dirname
+        setTimeout: 'readonly', // ✅ Allow setTimeout
+        clearTimeout: 'readonly', // ✅ Allow clearTimeout
+        Promise: 'readonly', // ✅ Allow Promise
       },
     },
   },
@@ -86,13 +100,6 @@ export default [
       '@typescript-eslint/no-var-requires': 'off',
     },
   },
-  // TypeScript and JavaScript overrides
-  {
-    files: ['*.ts', '*.tsx', '*.js', '*.jsx'],
-    rules: {
-      'no-unused-vars': 'error',
-      'no-debugger': 'error',
-    },
-  },
+
   prettier, // Prettier integration
 ];

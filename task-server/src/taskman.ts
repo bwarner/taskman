@@ -1,29 +1,25 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { Cluster } from 'ioredis';
+import express, { NextFunction, Request, Response } from 'express';
 import { createTaskInputSchema, updateTaskInputSchema } from './lib/types.js';
 import validate from './validate.js';
 import logger from './logger.js';
 import { TaskService } from './task.service.js';
+import { createClient } from 'redis';
 
-const redisNodes = process.env.REDIS_NODES?.split(',');
-let taskService: TaskService;
-
-const redis = new Cluster(
-  redisNodes?.map((node) => ({ host: node, port: 6379 })) || [],
-  {
-    redisOptions: {
-      password: process.env.REDIS_PASSWORD,
-    },
-  },
-);
-
-redis.on('connect', () => {
-  logger.info('Connected to Redis');
-  taskService = new TaskService(redis);
-  // TODO: add check for taskService initialization
+let client = createClient({
+  url: process.env.REDIS_URL,
 });
 
-redis.on('error', (err) => {
+try {
+  await client.connect();
+  console.log('Cluster says:', await client.get('task1'));
+} catch (err) {
+  logger.error('Redis error:', err);
+}
+
+logger.info('Connected to Redis');
+const taskService = new TaskService(client);
+
+client.on('error', (err) => {
   logger.error('Redis error:', err);
 });
 
@@ -32,34 +28,49 @@ const router = express.Router();
 router.post(
   '/tasks',
   validate(createTaskInputSchema),
-  (req: Request, res: Response, next: NextFunction) => {
-    const task = req.body;
-    const createdTask = taskService.createTask(task);
-    res.json(createdTask);
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const task = req.body;
+      const createdTask = await taskService.createTask(task);
+      res.json(createdTask);
+    } catch (err) {
+      console.error('error in createTask', err);
+      next(err);
+    }
   },
 );
 
 router.put(
   '/tasks/:id',
   validate(updateTaskInputSchema),
-  (req: Request, res: Response) => {
-    const task = req.body;
-    res.json(task);
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const task = req.body;
+      const updatedTask = taskService.updateTask(task);
+      res.json(updatedTask);
+    } catch (err) {
+      next(err);
+    }
   },
 );
 
-router.get('/tasks', (req: Request, res: Response) => {
+router.get('/tasks', async (req: Request, res: Response) => {
   const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
   const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-  const tasks = taskService.getTasks({
+  const taskList = await taskService.getTasks({
     offset,
     limit,
   });
-  res.json(tasks);
+  res.json(taskList);
 });
 
-router.get('/tasks/:id', (req: Request, res: Response) => {
-  res.json({});
+router.get('/tasks/:id', async (req: Request, res: Response) => {
+  const task = await taskService.getTask(req.params.id);
+  if (task) {
+    res.json(task);
+  } else {
+    res.status(404).json({ error: 'Task not found' });
+  }
 });
 
 router.delete('/tasks/:id', (req: Request, res: Response) => {

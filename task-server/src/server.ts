@@ -1,9 +1,10 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import taskman from './taskman.js';
 import logger from './logger.js';
-import Redis, { Cluster } from 'ioredis';
+import { ZodError } from 'zod';
 
+console.log('Starting server...');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
@@ -16,29 +17,27 @@ app.get('/health', (req, res) => {
 
 app.use('/api', taskman);
 
-app.listen(PORT, async () => {
-  const redisNodes = process.env.REDIS_NODES?.split(',');
-  let redis;
-  if (!process.env.REDIS_NODES) {
-    redis = new Redis.default({
-      host: 'localhost',
-      port: 6379,
-      password: process.env.REDIS_PASSWORD,
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  logger.error(err, 'Error in server');
+  if (err instanceof ZodError) {
+    const statusCode = 422;
+    res.status(statusCode).json({
+      error: err.errors.map((error: any) => error.message).join(', '),
+    });
+  } else if (err instanceof Error) {
+    const statusCode = 500;
+    res.status(statusCode).json({
+      error: err.message,
     });
   } else {
-    redis = new Cluster(
-      redisNodes?.map((node) => {
-        const [host, port] = node.split(':');
-        return { host, port: parseInt(port) };
-      }) ?? [{ host: 'localhost', port: 6379 }],
-      {
-        redisOptions: {
-          password: process.env.REDIS_PASSWORD,
-        },
-      },
-    );
+    const statusCode = 500;
+    res.status(statusCode).json({
+      error: 'Internal server error',
+    });
   }
-  console.log('Cluster says:', await redis.get('task1'));
+  next(err);
+});
 
-  logger.info(`🚀 Server running at XXXXXX http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  logger.info(`🚀 Server running at http://localhost:${PORT}`);
 });

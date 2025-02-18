@@ -12,7 +12,12 @@ const recurringScheduleSchema = z.object({
   cronExpression: z.string(),
 });
 
-const taskStatusSchema = z.enum(['pending', 'completed', 'failed']);
+const taskStatusSchema = z.enum([
+  'pending',
+  'scheduled',
+  'completed',
+  'failed',
+]);
 
 const createTaskInputSchema = z.object({
   name: z.string().min(3, 'Task name must be at least 3 characters'),
@@ -21,6 +26,8 @@ const createTaskInputSchema = z.object({
 type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 
 const updateTaskInputSchema = z.object({
+  id: z.string(),
+  name: z.string().min(3, 'Task name must be at least 3 characters'),
   schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
 });
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
@@ -28,7 +35,7 @@ type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 const taskSchema = z.object({
   id: z.string(),
   name: z.string(),
-  schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
+  schedule: z.string(),
   status: taskStatusSchema,
 });
 type Task = z.infer<typeof taskSchema>;
