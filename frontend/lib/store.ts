@@ -11,6 +11,7 @@ export interface TaskStore {
   setLimit: (limit: number) => void;
   setTotal: (total: number) => void;
   fetchTasks: () => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>()((set) => ({
@@ -32,6 +33,21 @@ export const useTaskStore = create<TaskStore>()((set) => ({
       total: parsed.total,
       offset: parsed.offset,
       limit: parsed.limit,
+    }));
+  },
+  deleteTask: async (id: string) => {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/tasks/${id}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to delete task');
+    }
+    set((state) => ({
+      ...state,
+      tasks: state.tasks.filter((task) => task.id !== id),
     }));
   },
 }));

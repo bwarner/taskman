@@ -43,6 +43,7 @@ export default function TaskForm({
     initialState
   );
 
+  console.log(' state', state);
   const [scheduleType, setScheduleType] = useState<'single' | 'recurring'>(
     initialState.schedule.type
   );
@@ -57,18 +58,25 @@ export default function TaskForm({
             <div className="text-red-500">{state.error.message}</div>
           )}
           <input type="hidden" name="id" value={task?.id} />
+          {state.error?.name && (
+            <div className="text-red-500">{state.error.name}</div>
+          )}
           <div className="space-y-2">
             <Label>
               Name:
               <Input
                 name="name"
                 type="text"
+                required
                 placeholder="Enter task name"
                 defaultValue={state.name}
               />
             </Label>
           </div>
           <div className="space-y-2">
+            {state.error?.schedule?.type && (
+              <div className="text-red-500">{state.error.schedule.type}</div>
+            )}
             <Label>
               Schedule:
               <RadioGroup
@@ -91,6 +99,9 @@ export default function TaskForm({
           </div>
           {scheduleType === 'single' && (
             <div className="space-y-2">
+              {state.error?.schedule?.date && (
+                <div className="text-red-500">{state.error.schedule.date}</div>
+              )}
               <Label>
                 Date:
                 <Input
@@ -107,6 +118,11 @@ export default function TaskForm({
           )}
           {scheduleType === 'recurring' && (
             <div className="space-y-2">
+              {state.error?.schedule?.cronExpression && (
+                <div className="text-red-500">
+                  {state.error.schedule.cronExpression}
+                </div>
+              )}
               <Label>
                 Cron Expression:
                 <Input

@@ -1,18 +1,17 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Task } from '@/lib/types';
-import { deleteTaskAction } from '@/lib/actions';
 import { useState } from 'react';
 import { useTaskStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 
 function TaskItem({ task }: { task: Task }) {
-  const { fetchTasks } = useTaskStore();
+  const { fetchTasks, deleteTask } = useTaskStore();
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const handleDelete = () => {
     setIsDeleting(true);
-    deleteTaskAction(task.id);
+    deleteTask(task.id);
     setIsDeleting(false);
     fetchTasks();
   };

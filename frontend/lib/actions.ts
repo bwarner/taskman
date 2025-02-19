@@ -1,23 +1,11 @@
 'use server';
 import { ZodError } from 'zod';
-import { createTaskInputSchema, type CreateTaskInput } from '@/lib/types';
+import {
+  createTaskInputSchema,
+  ErrorModel,
+  type CreateTaskInput,
+} from '@/lib/types';
 import { decode } from 'decode-formdata';
-import { redirect } from 'next/navigation';
-export async function deleteTaskAction(taskId: string) {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/tasks/${taskId}`,
-      {
-        method: 'DELETE',
-      }
-    );
-    if (!response.ok) {
-      throw new Error(`Failed to delete task: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error(error);
-  }
-}
 
 export async function createTaskAction(
   prev: CreateTaskInput,
@@ -61,11 +49,36 @@ export async function createTaskAction(
     return { ...data, message: 'Task created successfully' };
   } catch (e) {
     debugger;
+    const errorModel: ErrorModel = {
+      name: '',
+      schedule: {
+        type: '',
+        date: '',
+        cronExpression: '',
+      },
+      message: '',
+    };
     console.log(' e', e);
     if (e instanceof ZodError) {
-      const message = e.format();
-      console.log(' message', message);
-      return { ...prev, error: { message: 'Invalid form data' } };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const formattedErrors = e.format() as any;
+      console.log(' formattedErrors', formattedErrors);
+      if (formattedErrors?.name?._errors?.length > 0) {
+        errorModel.name = formattedErrors?.name?._errors.join(', ');
+      }
+      if (formattedErrors?.schedule?.date?._errors?.length > 0) {
+        errorModel.schedule = errorModel.schedule || {};
+        errorModel.schedule.date =
+          formattedErrors?.schedule?.date?._errors.join(', ');
+      }
+      if (formattedErrors?.schedule?.cronExpression?._errors?.length > 0) {
+        errorModel.schedule = errorModel.schedule || {};
+        errorModel.schedule.cronExpression =
+          formattedErrors?.schedule?.cronExpression?._errors.join(', ');
+      }
+
+      console.log(' errorModel', errorModel);
+      return { ...prev, error: errorModel };
     }
     return { ...prev, error: { message: 'Invalid form data' } };
   }
