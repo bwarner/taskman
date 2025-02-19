@@ -1,53 +1,72 @@
-import { formOpts } from '@/app/form.ops';
-import {
-  ServerValidateError,
-  createServerValidate,
-} from '@tanstack/react-form/nextjs';
-import { SafeParseReturnType } from 'zod';
+'use server';
+import { ZodError } from 'zod';
 import { createTaskInputSchema, type CreateTaskInput } from '@/lib/types';
 import { decode } from 'decode-formdata';
-
-const serverValidate = createServerValidate({
-  ...formOpts,
-  onServerValidate: async ({ value }) => {
-    // console.log('Welcome Form Data:', value);
-    const parsed: SafeParseReturnType<CreateTaskInput, unknown> =
-      createTaskInputSchema.safeParse(value);
-    if (!parsed.success) {
-      const errorGroups = parsed.error.errors.reduce((acc, e) => {
-        const path = e.path.join('.');
-        if (!acc[path]) {
-          acc[path] = [];
-        }
-        acc[path].push(e.message);
-        return acc;
-      }, {} as Record<string, string[]>);
-      console.log('Error Groups:', errorGroups);
-      const errors = Object.entries(errorGroups)
-        .map(([path, messages]) => `${path}: ${messages.join(', ')}`)
-        .join('; ');
-
-      return errors;
-    }
-    return undefined; // No errors
-  },
-});
-
-export async function createTaskAction(prev: unknown, formData: FormData) {
+import { redirect } from 'next/navigation';
+export async function deleteTaskAction(taskId: string) {
   try {
-    await serverValidate(formData);
-
-    const formObject = decode(formData);
-    console.log(formObject);
-    const parsed = createTaskInputSchema.parse(formObject);
-    console.log(parsed);
-    return { ...parsed, message: 'Task created successfully' };
-  } catch (e) {
-    if (e instanceof ServerValidateError) {
-      console.error('Validation Error:', e);
-      console.error('Validation Error formState:', e.formState);
-      return e.formState; // Return validation errors to the client
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/tasks/${taskId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to delete task: ${response.statusText}`);
     }
-    return { error: 'Invalid form data' };
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+export async function createTaskAction(
+  prev: CreateTaskInput,
+  formData: FormData
+): Promise<CreateTaskInput> {
+  try {
+    debugger;
+    console.log(' prev', prev);
+    const formObject = decode(formData);
+    console.log(' formObject', formObject);
+    debugger;
+    const parsed = createTaskInputSchema.parse(formObject);
+    console.log(' parsed', parsed);
+
+    let response;
+    if (prev.id) {
+      response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/tasks/${prev.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(parsed),
+        }
+      );
+    } else {
+      response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(parsed),
+      });
+    }
+    if (!response.ok) {
+      return { ...prev, error: { message: 'Failed to create task' } };
+    }
+    const data = await response.json();
+    console.log(' data', data);
+    return { ...data, message: 'Task created successfully' };
+  } catch (e) {
+    debugger;
+    console.log(' e', e);
+    if (e instanceof ZodError) {
+      const message = e.format();
+      console.log(' message', message);
+      return { ...prev, error: { message: 'Invalid form data' } };
+    }
+    return { ...prev, error: { message: 'Invalid form data' } };
   }
 }

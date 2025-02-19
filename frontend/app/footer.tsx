@@ -1,8 +1,13 @@
 import Image from 'next/image';
-
-export default function Footer() {
+import { cn } from '@/lib/utils';
+export default function Footer({ className }: { className?: string }) {
   return (
-    <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+    <footer
+      className={cn(
+        'row-start-3 flex gap-6 flex-wrap items-center justify-center',
+        className
+      )}
+    >
       <a
         className="flex items-center gap-2 hover:underline hover:underline-offset-4"
         href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"

@@ -10,6 +10,7 @@ const recurringScheduleSchema = z.object({
 });
 
 const createTaskInputSchema = z.object({
+  id: z.string().optional(),
   name: z
     .string()
     .min(3, 'Task name must be at least 3 characters')
@@ -20,9 +21,45 @@ const createTaskInputSchema = z.object({
   //   .refine((val) => val === true),
   schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
   message: z.string().optional(),
-  error: z.string().optional(),
+  error: z
+    .object({
+      name: z.string().optional(),
+      schedule: z
+        .object({
+          type: z.string().optional(),
+          date: z.string().optional(),
+          cronExpression: z.string().optional(),
+        })
+        .optional(),
+      message: z.string().optional(),
+    })
+    .optional(),
 });
 
 type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 
-export { createTaskInputSchema, type CreateTaskInput };
+const taskSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
+});
+
+type Task = z.infer<typeof taskSchema>;
+
+const taskListResponseSchema = z.object({
+  tasks: z.array(taskSchema),
+  limit: z.number(),
+  offset: z.number(),
+  total: z.number(),
+});
+
+type TaskListResponse = z.infer<typeof taskListResponseSchema>;
+
+export {
+  createTaskInputSchema,
+  type CreateTaskInput,
+  taskSchema,
+  type Task,
+  taskListResponseSchema,
+  type TaskListResponse,
+};

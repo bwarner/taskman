@@ -1,126 +1,129 @@
 'use client';
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import FieldError from '@/lib/ui';
-import {
-  mergeForm,
-  useForm,
-  useStore,
-  useTransform,
-} from '@tanstack/react-form';
-import { initialFormState } from '@tanstack/react-form/nextjs';
-import { formOpts } from './form.ops';
+
 import { createTaskAction } from '@/lib/actions';
-import { CreateTaskInput, createTaskInputSchema } from '@/lib/types';
-import { ZodValidator, zodValidator } from '@tanstack/zod-form-adapter';
-export function TaskForm() {
-  const [state, formAction] = useActionState(
+import { CreateTaskInput } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Task } from '@/lib/types';
+
+export default function TaskForm({
+  className,
+  task,
+}: {
+  className?: string;
+  task?: Task;
+}) {
+  const initialTask = task ?? {
+    id: '',
+    name: `Task Name ${Math.random()}`,
+    schedule: {
+      type: 'single',
+      date: new Date().toISOString(),
+    },
+  };
+  const initialState: CreateTaskInput = {
+    ...initialTask,
+    error: {
+      name: '',
+      schedule: {
+        type: '',
+        date: '',
+        cronExpression: '',
+      },
+      message: '',
+    },
+  };
+
+  const [state, formAction, isPending] = useActionState(
     createTaskAction,
-    initialFormState
+    initialState
   );
 
-  // const form = useForm({
-  const form = useForm<CreateTaskInput, ZodValidator>({
-    ...formOpts,
-    transform: useTransform<CreateTaskInput>(
-      (baseForm) => {
-        if (state) {
-          console.log('baseForm', baseForm);
-          return mergeForm<CreateTaskInput, ZodValidator>(baseForm, state);
-        }
-        return baseForm;
-      },
-      [state]
-    ),
-    validators: zodValidator(createTaskSchema),
-  });
-
-  const formErrors = useStore(form.store, (formState) => {
-    console.log('useStore Form State:', formState);
-    // return formState.errors;
-    return formState.errorMap.onServer
-      ? [
-          typeof formState.errorMap.onServer === 'string'
-            ? formState.errorMap.onServer
-            : 'Validation failed',
-        ]
-      : [];
-  });
-
+  const [scheduleType, setScheduleType] = useState<'single' | 'recurring'>(
+    initialState.schedule.type
+  );
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
-        <CardTitle>Create Task</CardTitle>
+        <CardTitle>{task ? 'Edit' : 'Create'} Task</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction as never} onSubmit={() => form.handleSubmit()}>
-          {formErrors.length > 0 && (
+        <form action={formAction}>
+          {state.error?.message && (
+            <div className="text-red-500">{state.error.message}</div>
+          )}
+          <input type="hidden" name="id" value={task?.id} />
+          <div className="space-y-2">
+            <Label>
+              Name:
+              <Input
+                name="name"
+                type="text"
+                placeholder="Enter task name"
+                defaultValue={state.name}
+              />
+            </Label>
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Schedule:
+              <RadioGroup
+                name="schedule.type"
+                defaultValue={scheduleType}
+                onValueChange={(value) =>
+                  setScheduleType(value as 'single' | 'recurring')
+                }
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="single" id="single" />
+                  <Label htmlFor="single">Single</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="recurring" id="recurring" />
+                  <Label htmlFor="recurring">Recurring</Label>
+                </div>
+              </RadioGroup>
+            </Label>
+          </div>
+          {scheduleType === 'single' && (
             <div className="space-y-2">
-              {/* <p className="text-sm font-medium text-destructive">
-                Form Errors: <pre>{JSON.stringify(formErrors, null, 2)}</pre>
-              </p> */}
-              <ul className="list-disc pl-5">
-                {formErrors.map((error, index) => (
-                  <li key={index} className="text-sm text-destructive">
-                    {error}
-                  </li>
-                ))}
-              </ul>
+              <Label>
+                Date:
+                <Input
+                  name="schedule.date"
+                  type="text"
+                  defaultValue={
+                    state.schedule?.type === 'single'
+                      ? state.schedule?.date
+                      : ''
+                  }
+                />
+              </Label>
             </div>
           )}
-          <form.Field name="name">
-            {(fieldApi) => (
-              <div className="space-y-2">
-                <Label>
-                  Name:
-                  <Input
-                    name={fieldApi.name}
-                    type="text"
-                    placeholder="Enter task name"
-                    value={fieldApi.state.value}
-                    onChange={(e) => fieldApi.handleChange(e.target.value)}
-                  />
-                  <FieldError fieldMeta={fieldApi.getMeta()} />
-                </Label>
-              </div>
-            )}
-          </form.Field>
-          <form.Field name="name">
-            {(fieldApi) => (
-              <div className="space-y-2">
-                <Label>
-                  Name:
-                  <Input
-                    name={fieldApi.name}
-                    type="text"
-                    placeholder="Enter task name"
-                    value={fieldApi.state.value}
-                    onChange={(e) => fieldApi.handleChange(e.target.value)}
-                  />
-                  <FieldError fieldMeta={fieldApi.getMeta()} />
-                </Label>
-              </div>
-            )}
-          </form.Field>
-          <form.Field name="name">
-            {(fieldApi) => (
-              <div className="space-y-2">
-                <Label>
-                  Name:
-                  <Input
-                    name={fieldApi.name}
-                    type="text"
-                    placeholder="Enter task name"
-                    value={fieldApi.state.value}
-                    onChange={(e) => fieldApi.handleChange(e.target.value)}
-                  />
-                  <FieldError fieldMeta={fieldApi.getMeta()} />
-                </Label>
-              </div>
-            )}
-          </form.Field>
+          {scheduleType === 'recurring' && (
+            <div className="space-y-2">
+              <Label>
+                Cron Expression:
+                <Input
+                  name="schedule.cronExpression"
+                  type="text"
+                  defaultValue={
+                    state.schedule?.type === 'recurring'
+                      ? state.schedule?.cronExpression
+                      : ''
+                  }
+                />
+              </Label>
+            </div>
+          )}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? 'Submitting...' : 'Submit'}
+          </Button>
         </form>
       </CardContent>
     </Card>
