@@ -18,8 +18,11 @@ export default function Event() {
     eventSource.onmessage = async (event) => {
       console.log(' event', event);
       setEvents((prev) => [
+        {
+          timestamp: new Date().toISOString(),
+          event: event.data,
+        },
         ...prev,
-        { timestamp: new Date().toISOString(), event: event.data },
       ]);
       await fetchTasks();
     };
@@ -35,7 +38,7 @@ export default function Event() {
     <div>
       <div>Listening for events</div>
       <div className="h-[200px] w-full border-1 overflow-y-visible">
-        {events.map((event) => (
+        {events.slice(0, 10).map((event) => (
           <div key={event.timestamp}>{event.event}</div>
         ))}
       </div>

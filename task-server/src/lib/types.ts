@@ -35,8 +35,9 @@ type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 const taskSchema = z.object({
   id: z.string(),
   name: z.string(),
-  schedule: z.string(),
+  schedule: z.union([singleScheduleSchema, recurringScheduleSchema]),
   status: taskStatusSchema,
+  nextRun: z.string().optional(),
 });
 type Task = z.infer<typeof taskSchema>;
 

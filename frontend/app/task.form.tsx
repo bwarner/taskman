@@ -22,7 +22,7 @@ export default function TaskForm({
     name: `Task Name ${Math.random()}`,
     schedule: {
       type: 'single',
-      date: new Date().toISOString(),
+      date: '2025-02-28T03:50:00.000Z',
     },
   };
   const initialState: CreateTaskInput = {
@@ -43,7 +43,6 @@ export default function TaskForm({
     initialState
   );
 
-  console.log(' state', state);
   const [scheduleType, setScheduleType] = useState<'single' | 'recurring'>(
     initialState.schedule.type
   );
@@ -114,6 +113,9 @@ export default function TaskForm({
                   }
                 />
               </Label>
+              <div className="text-sm text-gray-500">
+                Example date: 2025-02-28T23:41:03.323Z
+              </div>
             </div>
           )}
           {scheduleType === 'recurring' && (

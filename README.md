@@ -18,8 +18,12 @@ Taskman is a distributed task running application. It is am simple system that a
 ## Architecture
 
 The system is composed of the following components: worker nodes, front-end server, a watchdog server, and a Redis server.
+For simplicity the works will will be rolled into a single server.
+The database will stored in Redis (I had trouble setting up a redis cluster, so I am using a single instance)
+I am only running a single instance of the Taskman server, but to scale it we could run multiple instances behind a load balancer like haproxy or nginx.
+The browser interact it te taskman server via a REST API and SSE (Server Sent Events).  SSE is use along with Redis PubSub to notify the browser of events like task runs, task completions, and task failures.
 
-### Worker Nodes
+### Backend Server
 
 The worker nodes are responsible for running the tasks. They are responsible for listening for tasks from the front-end server and executing them.
 
@@ -33,7 +37,7 @@ The watchdog server is responsible for monitoring the state of tasks, it will no
 
 ### Redis 
 
-Redis is used to store the state of the tasks, it is used to store the task queue, the task results, and the task logs.
+Redis is used to store the state of the tasks, it is used to store the task list, the task results, and etc.
 
 ### Taskman API
 

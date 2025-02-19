@@ -6,6 +6,9 @@ import { createClient } from 'redis';
 import { flatten, unflatten } from 'flat';
 import { ZodSchema } from 'zod';
 import { isoToCronLike, isoToUnix } from './lib/utils.js';
+import { TASK_EVENTS, TASK_EVENTS_CHANNEL } from './lib/const.js';
+import { CronExpressionParser } from 'cron-parser';
+
 // Constants for Redis keys
 const KEYS = {
   SCHEDULED_TASKS: 'scheduled-tasks',
@@ -15,7 +18,7 @@ const KEYS = {
   LAST_RUN: 'last-run',
 } as const;
 
-class TaskNotFoundError extends Error {
+export class TaskNotFoundError extends Error {
   constructor(taskId: string) {
     super(`Task not found: ${taskId}`);
     this.name = 'TaskNotFoundError';
@@ -32,7 +35,7 @@ type RedisTransaction = (
   multi: ReturnType<RedisClient['multi']>,
 ) => Promise<void>;
 
-async function executeMulti(redis: RedisClient, script: RedisTransaction) {
+async function executeBatch(redis: RedisClient, script: RedisTransaction) {
   const multi = redis.multi();
   await script(multi);
   return multi.exec();
@@ -45,6 +48,7 @@ async function getHash<T>(
 ): Promise<T> {
   const data = await redis.hGetAll(key);
   if (!Object.keys(data).length) {
+    logger.error(`Task not found: ${key}`);
     throw new TaskNotFoundError(key);
   }
   const unflattenedData = unflatten(data);
@@ -58,13 +62,8 @@ export class TaskService {
     return `${KEYS.TASK_PREFIX}${nanoid()}`;
   }
 
-  private async executeMulti() {
-    try {
-      return await this.redis.multi().exec();
-    } catch (error) {
-      logger.error('Redis transaction failed:', error);
-      throw new Error('Failed to execute Redis transaction');
-    }
+  async notify(event: string) {
+    await this.redis.publish(TASK_EVENTS_CHANNEL, event);
   }
 
   async createTask(input: CreateTaskInput): Promise<Task> {
@@ -72,15 +71,12 @@ export class TaskService {
     const task: Task = {
       id,
       name: input.name,
-      schedule:
-        input.schedule.type === 'single'
-          ? isoToCronLike(input.schedule.date)
-          : input.schedule.cronExpression,
+      schedule: input.schedule,
       status: 'pending',
     };
 
     try {
-      const result = await executeMulti(this.redis, async (multi) => {
+      const result = await executeBatch(this.redis, async (multi) => {
         multi.sAdd(KEYS.ALL_TASKS, id);
         toFieldAndData(task).map(([field, value]) =>
           multi.hSet(id, field, value),
@@ -91,10 +87,11 @@ export class TaskService {
         throw new Error('Failed to create task');
       }
 
-      logger.info('Task created successfully:', { taskId: id });
+      logger.info(task, `Task created successfully: ${id}`);
+      await this.notify(TASK_EVENTS.TASK_CREATED);
       return task;
     } catch (error) {
-      logger.error('Failed to create task:', error);
+      logger.error(error, 'Failed to create task');
       throw new Error('Failed to create task');
     }
   }
@@ -105,13 +102,10 @@ export class TaskService {
       const updatedTask: Task = {
         ...existingTask,
         name: input.name,
-        schedule:
-          input.schedule.type === 'single'
-            ? isoToCronLike(input.schedule.date)
-            : input.schedule.cronExpression,
+        schedule: input.schedule,
       };
 
-      const result = await executeMulti(this.redis, async (multi) => {
+      const result = await executeBatch(this.redis, async (multi) => {
         toFieldAndData(updatedTask).map(([field, value]) =>
           multi.hSet(input.id, field, value),
         );
@@ -121,19 +115,20 @@ export class TaskService {
         throw new Error('Failed to update task');
       }
 
-      logger.info('Task updated successfully:', { taskId: input.id });
+      logger.info(updatedTask, `Task updated successfully: ${input.id}`);
+      await this.notify(TASK_EVENTS.TASK_UPDATED);
       return updatedTask;
     } catch (error) {
       if (error instanceof TaskNotFoundError) {
         throw error;
       }
-      logger.error('Failed to update task:', error);
+      logger.error(error, 'Failed to update task');
       throw new Error('Failed to update task');
     }
   }
 
   async updateTask(task: Task): Promise<Task> {
-    const result = await executeMulti(this.redis, async (multi) => {
+    const result = await executeBatch(this.redis, async (multi) => {
       toFieldAndData(task).map(([field, value]) =>
         multi.hSet(task.id, field, value),
       );
@@ -183,7 +178,7 @@ export class TaskService {
         tasks,
         offset: options.offset,
         limit: options.limit,
-        total: totalTasks,
+        total: tasks.length,
       };
     } catch (error) {
       logger.error('Failed to get tasks:', error);
@@ -192,81 +187,116 @@ export class TaskService {
   }
 
   async deleteTask(id: string): Promise<void> {
+    logger.info(`deleting task ${id}`);
     try {
-      const multi = this.redis.multi();
+      const result = await executeBatch(this.redis, async (multi) => {
+        multi.sRem(KEYS.RECURRING_TASKS, id);
+        multi.sRem(KEYS.ALL_TASKS, id);
+        multi.del(id);
+      });
 
-      multi.sRem(KEYS.RECURRING_TASKS, id);
-
-      // Remove from all-tasks set and delete hash
-      multi.sRem(KEYS.ALL_TASKS, id);
-      multi.del(id);
-
-      await this.executeMulti();
-      logger.info('Task deleted successfully:', { taskId: id });
+      if (!result) {
+        throw new Error('Failed to delete task');
+      }
+      logger.info(result, 'result of delete task ');
+      logger.info(`Task deleted successfully: ${id}`);
+      await this.notify(TASK_EVENTS.TASK_DELETED);
     } catch (error) {
       if (error instanceof TaskNotFoundError) {
         throw error;
       }
-      logger.error('Failed to delete task:', error);
+      logger.error(error, 'Failed to delete task');
       throw new Error('Failed to delete task');
     }
   }
 
-  async executeTasks(task: Task) {
-    const now = Date.now();
-    const nextRun =
-      isoToUnix(task.schedule) > now ? isoToUnix(task.schedule) - now : 0;
-    if (nextRun > 0) {
-      // eslint-disable-next-line no-undef
-      await new Promise((resolve) => setTimeout(resolve, nextRun));
-      logger.info('Executing task:', { taskId: task.id, name: task.name });
+  toCronExpression(task: Task) {
+    if (task.schedule.type === 'single') {
+      return isoToCronLike(task.schedule.date);
+    }
+    return task.schedule.cronExpression;
+  }
+
+  async getNextRun(task: Task) {
+    if (task.schedule.type === 'single') {
+      const now = Date.now();
+      const unix = isoToUnix(task.schedule.date);
+      if (unix > now) {
+        return unix;
+      }
+      return null;
     } else {
-      logger.info('Task is already due:', { taskId: task.id, name: task.name });
+      const cronExpression = this.toCronExpression(task);
+      const cronDate = CronExpressionParser.parse(cronExpression);
+      const cronNext = cronDate.next();
+      if (cronNext) {
+        logger.debug(
+          `next run for task ${task.id} to run at ${Math.floor(cronNext.toDate().getTime() / 1000)}`,
+        );
+        return Math.floor(cronNext.toDate().getTime() / 1000);
+      }
+      logger.info(`task ${task.id} has no next run`);
+      this.deleteTask(task.id);
+      return null;
     }
   }
 
-  async isTaskDue(task: Task) {
-    const now = Date.now();
-    const nextRun =
-      isoToUnix(task.schedule) > now ? isoToUnix(task.schedule) - now : 0;
-    return nextRun > 0;
-  }
-
   async scheduleTasks() {
-    const taskIds = await this.redis.lRange(KEYS.ALL_TASKS, 0, -1);
-    for (const taskId of taskIds) {
-      const task = await this.getTask(taskId);
-      if (await this.isTaskDue(task)) {
-        this.redis.zAdd(KEYS.SCHEDULED_TASKS, {
-          score: isoToUnix(task.schedule),
-          value: taskId,
-        });
+    const tasks = await this.getTasks({ offset: 0, limit: 100 });
+    logger.debug(`scheduling ${tasks.tasks.length} tasks`);
+    for (const task of tasks.tasks) {
+      const nextRun = await this.getNextRun(task);
+      if (nextRun) {
+        logger.debug(`next run for task ${task.id} is ${nextRun}`);
+        if (!task.nextRun || nextRun > parseInt(task.nextRun)) {
+          logger.info(`scheduling task ${task.id} to run at ${nextRun}`);
+          this.redis.zAdd(KEYS.SCHEDULED_TASKS, {
+            score: nextRun,
+            value: task.id,
+          });
+          logger.debug(
+            `Scheduled task ${task.id} to run at ${nextRun} formatted: ${new Date(nextRun * 1000)}`,
+          );
+          task.nextRun = nextRun.toString();
+          await this.updateTask(task);
+        }
       }
     }
   }
 
-  async getTasksToExecute(): Promise<Task[]> {
-    const lastRun = Number.parseInt(
-      (await this.redis.get(KEYS.LAST_RUN)) || '0',
-    );
-    const until = lastRun + 1000 * 60;
+  async processTasks(): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
     const recurringTasksIds = await this.redis.zRangeByScore(
       KEYS.SCHEDULED_TASKS,
-      lastRun,
-      until,
+      now,
+      now + 1000 * 60,
+      {
+        LIMIT: { offset: 0, count: 100 },
+      },
     );
-    const tasks = (
-      await Promise.allSettled(
-        recurringTasksIds.map(async (taskId) => this.getTask(taskId)),
-      )
-    )
-      .filter(
-        (result): result is PromiseFulfilledResult<Task> =>
-          result.status === 'fulfilled',
-      )
-      .map((result) => result.value)
-      .filter((task) => Boolean(task));
 
-    return tasks;
+    logger.debug(`processing ${recurringTasksIds.length} recurring tasks`);
+
+    for (const taskId of recurringTasksIds) {
+      const nextRun = await this.redis.zScore(KEYS.SCHEDULED_TASKS, taskId);
+      logger.debug(`next run for ${taskId} is ${nextRun}`);
+      logger.debug(`now is ${now}`);
+
+      if (nextRun && nextRun > now) {
+        logger.debug(
+          `next run for ${taskId} is ${new Date(nextRun * 1000)} in ${
+            nextRun - now
+          } seconds`,
+        );
+        setTimeout(async () => {
+          const task = await this.getTask(taskId);
+          logger.info(
+            `Executing task ${task.id} at ${new Date(nextRun * 1000)}`,
+          );
+          await this.redis.zRem(KEYS.SCHEDULED_TASKS, taskId);
+          await this.notify(TASK_EVENTS.TASK_RUN + `: ${task.id}`);
+        }, nextRun - now);
+      }
+    }
   }
 }
