@@ -1,54 +1,89 @@
-# Taskman - a distribute task running application
+# Taskman - A Distributed Task Running Application
 
 ## Overview 
 
-Taskman is a distributed task running application. It is am simple system that allows you to run tasks on a distributed system.
+**Taskman** is a **distributed task runner** that enables running and scheduling tasks across multiple machines. It supports **one-time and recurring tasks**, provides **real-time status updates**, and ensures **task durability** even if the system restarts.
 
-## Objectives
+## Features & Objectives
 
-- To provide a simple system for running tasks
-- The tasks can be scheduled to run onetime or recurring
-- The task can be scheduled to run on a specific cron schedule
-- The status of the task can be viewed in the UI
-- The task logs can be viewed in the UI
-- The tasks are durable, meaning that they will run even if the Taskman server is restarted
-- The tasks are distributed, meaning that they will be run on different machines
-- The tasks are scalable, meaning that they can be run on a large number of machines
-  
+- ✅ **Task Scheduling**: Supports one-time and recurring tasks.
+- ⏳ **Cron Scheduling**: Tasks can be scheduled using cron expressions.
+- 📊 **UI Monitoring**: View task status and logs in a web interface.
+- 🔄 **Durability**: Tasks persist and resume even after a server restart.
+- 🌍 **Distributed Execution**: Tasks can be executed across multiple worker nodes.
+- 📈 **Scalability**: Can scale across multiple machines behind a load balancer.
+
 ## Architecture
 
-The system is composed of the following components: worker nodes, front-end server, a watchdog server, and a Redis server.
-For simplicity the works will will be rolled into a single server.
-The database will stored in Redis (I had trouble setting up a redis cluster, so I am using a single instance)
-I am only running a single instance of the Taskman server, but to scale it we could run multiple instances behind a load balancer like haproxy or nginx.
-The browser interact it te taskman server via a REST API and SSE (Server Sent Events).  SSE is use along with Redis PubSub to notify the browser of events like task runs, task completions, and task failures.
+Taskman consists of the following components:
 
-### Backend Server
+- **Backend Server** (includes workers)
+- **Frontend Server**
+- **Watchdog Server**
+- **Redis Server** (Task storage and pub/sub for real-time events)
 
-The worker nodes are responsible for running the tasks. They are responsible for listening for tasks from the front-end server and executing them.
+### **1. Backend Server (Workers)**
+The **backend server** is responsible for processing and executing tasks. It listens for tasks from the frontend server and executes them. 
 
-### Front-end Server
+💡 *For simplicity, the workers and backend API are hosted in a single server.*
 
-The front-end server is responsible for sending tasks to the worker nodes and receiving the results.
+### **2. Frontend Server**
+The **frontend server** provides a UI for managing tasks. It communicates with the backend via a **REST API** and **Server-Sent Events (SSE)** for real-time updates.
 
-### Watchdog Server
+### **3. Watchdog Server**
+The **watchdog server** ensures reliability by:
+- Detecting **stalled or failed tasks**
+- Restarting long-running or stuck jobs
+- Keeping track of scheduled execution times
+- Instead of separate server its an interval timer that runs on the backend server
 
-The watchdog server is responsible for monitoring the state of tasks, it will notice things like tasks that have been scheduled to run but not started, or tasks that have been running for too long.
+### **4. Redis (Task Storage & Pub/Sub)**
+Redis is used to:
+- Store **task metadata and logs**
+- Maintain a **sorted set** of scheduled tasks
+- Use **Pub/Sub** to send task updates in real-time
+- Ensure **fault tolerance and durability**
 
-### Redis 
+💡 *Currently, Taskman uses a **single Redis instance** instead of a cluster due to setup issues, but Redis Cluster support is planned for future scalability.*
 
-Redis is used to store the state of the tasks, it is used to store the task list, the task results, and etc.
+## Taskman API
 
-### Taskman API
+The **Taskman API** is a **RESTful API** that facilitates communication between the frontend and backend. It allows:
+- 📩 Submitting tasks for execution
+- 🔍 Fetching task status and logs
+- 🔔 Receiving real-time updates via **SSE + Redis Pub/Sub**
 
-The Taskman API is a REST API that is used to communicate between the front-end server and the worker nodes. It is used to send tasks to the worker nodes and receive the results. For simplicity the works will host the API.
+## How to Run the Application
 
-The API will be used by the front-end server to send tasks to the worker nodes and receive the results.
+### 1️⃣ Clone the repository
+```sh
+git clone https://github.com/yourusername/taskman.git
+cd taskman
+```
 
+### 2️⃣ Add task-server to your /etc/hosts file
+```sh
+echo "127.0.0.1 task-server" | sudo tee -a /etc/hosts
+```
 
+### 3️⃣ Run the application
+```sh
+docker compose up --build
+```
 
+### 4️⃣ Access the application
+```sh
+http://localhost:3000
+```
 
+### 5️⃣ Check the health of the application
+```sh
+curl http://localhost:8080/health
+```
 
-
-
-
+### 6️⃣ Check the health of the frontend application
+```sh
+curl http://localhost:3000/healthcheck
+```
+Note: there bug, the edit task page does not navigate to the task list page after editing a task.
+you have to manually navigate to the task list page.

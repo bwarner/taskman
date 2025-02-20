@@ -27,6 +27,7 @@ try {
 }
 
 const taskService = new TaskService(client);
+// this is the watchdog that schedules and processes tasks it runs every 1 second
 const watcherId = setInterval(() => {
   taskService.scheduleTasks();
   taskService.processTasks();
@@ -39,17 +40,6 @@ process.on('exit', () => {
 });
 
 const router = express.Router();
-
-router.get('/tasks/schedule', async (req: Request, res: Response) => {
-  await taskService.scheduleTasks();
-  res.json({ message: 'Tasks scheduled' });
-});
-
-router.get('/tasks/process', async (req: Request, res: Response) => {
-  await taskService.scheduleTasks();
-  await taskService.processTasks();
-  res.json({ message: 'Tasks processed' });
-});
 
 router.post(
   '/tasks',

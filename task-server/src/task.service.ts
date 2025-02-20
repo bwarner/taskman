@@ -217,6 +217,7 @@ export class TaskService {
     return task.schedule.cronExpression;
   }
 
+  // this function returns the next run time for a task
   async getNextRun(task: Task) {
     if (task.schedule.type === 'single') {
       const now = Date.now();
@@ -241,6 +242,7 @@ export class TaskService {
     }
   }
 
+  // this loops through all tasks and schedules them if they have a next run time
   async scheduleTasks() {
     const tasks = await this.getTasks({ offset: 0, limit: 100 });
     logger.debug(`scheduling ${tasks.tasks.length} tasks`);
