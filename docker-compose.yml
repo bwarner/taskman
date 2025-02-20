@@ -5,16 +5,17 @@ services:
       container_name: task-server
       restart: unless-stopped
       ports:
-        - "8080:8080"  # Adjust the port based on your server
+        - "8080:8080"
       depends_on:
         - redis-node-0  # Ensure Redis starts before task-server
-      env_file:
-        - ./task-server/.env  # Load environment variables
+      environment:
+        - REDIS_PASSWORD=your-secure-password
+        - REDIS_URL=redis://default:your-secure-password@redis-node-0:6379
       networks:
         - redis-net
-      volumes:
-        - ./task-server:/usr/src/app  # Mount local files for live reload
-        - /usr/src/app/node_modules  # Avoid overwriting node_modules
+      # volumes:
+      #   - ./task-server:/usr/src/app  # Mount local files for live reload
+      #   - /usr/src/app/node_modules  # Avoid overwriting node_modules
       healthcheck:
         test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"] # Example health check, replace with your app's health endpoint
         interval: 10s
@@ -22,24 +23,13 @@ services:
         retries: 5
         start_period: 30s # Give the app some time to start        
   redis-node-0:
-    build: ./redis
-    container_name: redis-node-0
-    depends_on:
-      - redis-node-1
-      - redis-node-2
-      - redis-node-3
-      - redis-node-4
-      - redis-node-5  
+    image: bitnami/redis:latest
+    container_name: redis-node-0 
     restart: unless-stopped
-    ports:
-      - "6379:6379"
-    env_file: 
-      - ./redis/.env
     environment:
       - REDIS_PASSWORD=your-secure-password
-      - REDIS_CLUSTER_CREATOR=yes
-      - REDISCLI_AUTH=bitnami
-      - REDIS_CLUSTER_REPLICAS=1
+      - ALLOW_EMPTY_PASSWORD=no
+      - NODE_ENV=development
     networks:
       - redis-net
     healthcheck:
@@ -49,72 +39,32 @@ services:
       retries: 5
     volumes:
       - redis_data_0:/data
-
-
-  redis-node-1:
-    image: bitnami/redis-cluster:latest
-    container_name: redis-node-1
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
     restart: unless-stopped
     ports:
-      - "6380:6379"
-    env_file: 
-      - ./redis/.env
+      - "3000:3000"
     networks:
       - redis-net
-    volumes:
-      - redis_data_1:/data
+    depends_on:
+      task-server:
+        condition: service_healthy
+      redis-node-0:
+        condition: service_healthy
+    environment:
+      - NEXT_PUBLIC_API_URL=http://task-server:8080/api
+      - NODE_ENV=development
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:3000/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 20s
+      retries: 5
+      start_period: 30s
+    
 
-  redis-node-2:
-    image: bitnami/redis-cluster:latest
-    container_name: redis-node-2
-    restart: unless-stopped
-    ports:
-      - "6381:6379"
-    env_file: 
-      - ./redis/.env
-    networks:
-      - redis-net
-    volumes:
-      - redis_data_2:/data
-
-  redis-node-3:
-    image: bitnami/redis-cluster:latest
-    container_name: redis-node-3
-    restart: unless-stopped
-    ports:
-      - "6382:6379"
-    env_file: 
-      - ./redis/.env
-    networks:
-      - redis-net
-    volumes:
-      - redis_data_3:/data
-
-  redis-node-4:
-    image: bitnami/redis-cluster:latest
-    container_name: redis-node-4
-    restart: unless-stopped
-    ports:
-      - "6383:6379"
-    env_file: 
-      - ./redis/.env
-    networks:
-      - redis-net
-    volumes:
-      - redis_data_4:/data
-
-  redis-node-5:
-    image: bitnami/redis-cluster:latest
-    container_name: redis-node-5
-    restart: unless-stopped
-    ports:
-      - "6384:6379"
-    env_file: 
-      - ./redis/.env
-    networks:
-      - redis-net
-    volumes:
-      - redis_data_5:/data
 
 networks:
   redis-net:
@@ -122,8 +72,4 @@ networks:
 
 volumes:
   redis_data_0:
-  redis_data_1:
-  redis_data_2:
-  redis_data_3:
-  redis_data_4:
-  redis_data_5:
+ 

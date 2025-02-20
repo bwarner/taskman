@@ -1,6 +1,10 @@
 import TaskForm from '@/app/task.form';
 
-export default async function EditPage({ params }: { params: { id: string } }) {
+export default async function EditPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/tasks/${id}`

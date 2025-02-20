@@ -6,6 +6,7 @@ import { TaskService, TaskNotFoundError } from './task.service.js';
 import { createClient } from 'redis';
 import { TASK_EVENTS_CHANNEL } from './lib/const.js';
 
+logger.info('Redis URL:', process.env.REDIS_URL);
 let client = createClient({
   url: process.env.REDIS_URL,
 });
@@ -20,9 +21,9 @@ client.on('connect', () => {
 
 try {
   await client.connect();
-  console.log('Cluster says:', await client.get('task1'));
 } catch (err) {
   logger.error('Redis error:', err);
+  process.exit(1);
 }
 
 const taskService = new TaskService(client);
